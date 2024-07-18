@@ -42,8 +42,8 @@ class AMapApiClient:
         params_dict['key'] = self.api_key
         page = 1
         fetched_df = pd.DataFrame(
-            columns=["index", "name", "lng", "lat", "province", "city", "area", "location", "remark"
-                     ""])
+            columns=["index", "name", "lng", "lat", "province", "city", "area", "location",
+                     "big_category", "mid_category", "sub_category", "rating", "parking_type"])
         name = params_dict.get('city', None) + "|" + params_dict.get('types', None)
         while True:
             try:
@@ -57,7 +57,7 @@ class AMapApiClient:
                             break
                         page += 1
                         if self.search_mode == 'keyword':
-                            fetched_df = self.parse_keyword_data(fetched_df,name, response)
+                            fetched_df = self.parse_keyword_data(fetched_df, response)
                         elif self.search_mode == 'round':
                             fetched_df = self.parse_round_data(fetched_df, response)
                         else:
@@ -72,12 +72,13 @@ class AMapApiClient:
                 logging.error(f"| api error | {e}")
                 print(f"{e}")
                 return await None
-            
+        fetched_df.name = name 
         return fetched_df
         
             
-    def parse_keyword_data(self, df : pd.DataFrame, name: str, response : dict):
-        for poi in response["pois"]:
+    def parse_keyword_data(self, df : pd.DataFrame, response : dict):
+        for i in range(int(response["count"])):
+            poi = response["pois"][i]
             try:
                 new_item = pd.DataFrame({
                     "index": [df.shape[0]],
@@ -88,12 +89,22 @@ class AMapApiClient:
                     "city": poi["cityname"],
                     "area": poi["adname"],
                     "location": poi["location"],
-                    "remark": name
+                    "big_category" : poi["type"].split(";")[0],
+                    "mid_category" : poi["type"].split(";")[1],
+                    "sub_category" : poi["type"].split(";")[2],
                 })
+                if poi["typecode"] in settings.BASE_CLASS.PARKING_SET.value and "parking_type" in poi["business"]:
+                    new_item.loc[0, "parking_type"] = poi["business"]["parking_type"]
+                else:
+                    new_item.loc[0, "parking_type"] = None
+                if "rating" in poi["business"] and poi["business"]["rating"] is not None:
+                    new_item.loc[0, "rating"] = poi["business"]["rating"]
+                else:
+                    new_item.loc[0, "rating"] = "暂无评分数据"
                 df = pd.concat([df, new_item], ignore_index=True)
 
             except KeyError as e:
-                logging.error(f"| item {df.size()} was parsed error | {e}")
+                logging.error(f"| item {len(df)} was parsed error | {e}")
         
         return df
     

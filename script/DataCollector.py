@@ -33,9 +33,7 @@ class DataCollector:
                                 city=city,
                                 city_limit='true',
                                 page_size=25,
-                                page_num=1,
-                                extensions='all',
-                                ))
+                                page_num=1))
     self.excel_num = len(params)
     return params
 
@@ -59,7 +57,7 @@ class DataCollector:
 
   def save_data(self):
     for i in range(self.excel_num):
-      name = self.data_frames[i].loc[0, "remark"]
+      name = self.data_frames[i].name[0]
       file_name = "{}AMAP_{}.xlsx".format(settings.BASE_FILE_PATH.DATA_MAIN_PATH.value, name)
       file_name = re.sub(r'[|]', '_', file_name)
       try:

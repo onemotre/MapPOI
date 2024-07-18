@@ -13,8 +13,8 @@ class AMapKeywordParameters:
     city_limit: Optional[str] = "true"
     page_size: Optional[int] = 25  # 不超过25
     page_num: Optional[int] = 1
-    extensions: Optional[str] = 'all'
     output: Optional[str] = 'json'
+    show_fields: Optional[str] = 'business'
 
 @dataclass
 class AMapRoundParameters:
