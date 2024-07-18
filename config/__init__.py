@@ -1,0 +1,3 @@
+from .settings import KEYWORDS, SEARCH_AREA, BASE_FILE_PATH
+
+__all__ = ["KEYWORDS", "SEARCH_AREA", BASE_FILE_PATH]
