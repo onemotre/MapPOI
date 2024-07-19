@@ -1,2 +1,3 @@
-from .amap_client import AMapApiClient
-__all__ = ["AMapApiClient"]
+from .amap_client import AMapAPIClients
+
+__all__ = ['AMapAPIClients']

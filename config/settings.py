@@ -1,52 +1,40 @@
-"""
-全局配置文件
-"""
 import os
 from enum import Enum
-from typing import Set
+
+AMAP_API_KEY = "c1a6e793f86edf6211b1f55d7d38846c"
+
 
 class BASE_FILE_PATH(Enum):
-  CONFIG_PATH = os.path.dirname(os.path.abspath(__file__))
-  MAIN_WORD_PATH = os.path.dirname(CONFIG_PATH)
-  DATA_MAIN_PATH = MAIN_WORD_PATH + "\\data\\"
-  LOG_PATH = MAIN_WORD_PATH + "\\log\\"
+    CONFIG_PATH = str(os.path.dirname(os.path.abspath(__file__)))
+    MAIN_WORD_PATH = str(os.path.dirname(CONFIG_PATH))
+    DATA_MAIN_PATH = MAIN_WORD_PATH + "/data/"
+    LOG_PATH = MAIN_WORD_PATH + "/log/"
+    DIV = "/"
+
 
 class BASE_CLASS(Enum):
-  PARKING_SET = {"150900", "150903", "150904", "150905", "150906"," 150907"," 150908", "150909"}
+    PARKING_SET = {"150900", "150903", "150904", "150905", "150906", " 150907", " 150908", "150909"}
+    SUPPORT_APINAME = {"GAODE"}
 
-BAIDU_API_KEY = os.getenv('BAIDU_API_KEY', 'None')
 
-########### 高德地图 API 配置 ###############
-# 所有需要查询的城市
-AMAP_API_KEY = os.getenv('AMAP_API_KEY', 'c1a6e793f86edf6211b1f55d7d38846c')
-# SEARCH_AREA = [
-#   '云岩区', '南明区', '乌当区', '白云区', '花溪区', '观山湖区', '清镇市', '开阳县', '修文县', '息烽县',
-#   '汇川区', '红花岗区', '播州区', '赤水市', '仁怀市', '桐梓县', '绥阳县', '正安县', '道真县', '务川县', '凤冈县', '湄潭县', '余庆县', '习水县',
-#   '钟山区', '盘州市', '六枝特区', '水城县',
-#   '西秀区', '平坝区', '普定县', '镇宁县', '关岭县', '紫云县',
-#   '七星关区', '大方县', '黔西县', '金沙县', '织金县', '纳雍县', '威宁县', '赫章县',
-#   '碧江区', '德江县', '江口县', '思南县', '万山区', '石阡县', '玉屏县', '印江县', '沿河县', '松桃县',
-#   '凯里市','镇远县','黄平县','施秉县','三穗县','岑巩县','天柱县','锦屏县','剑河县','台江县','黎平县','榕江县','从江县','雷山县','麻江县','丹寨县',
-#   '都匀市','福泉市','荔波县','贵定县','瓮安县','独山县','平塘县','罗甸县','长顺县','龙里县','惠水县','三都县',
-#   '兴义市','兴仁市','普安县','晴隆县','贞丰县','望谟县','册亨县','安龙县'
-# ]
-SEARCH_AREA = [
-  '榕江县','花溪区','习水县','织金县','紫云自治县','赫章县','雷山县','镇远县','平塘县','江口县','印江县','荔波县','台江县','从江县','黎平县','大方县'
-]
-# SEARCH_AREA = [
-#   '榕江县'
-# ]
+class BASE_CONFIG(Enum):
+    SEARCH_AREA = [
+        '榕江县','花溪区','习水县','织金县','紫云自治县','赫章县','雷山县',
+        '镇远县','平塘县','江口县','印江县','荔波县','台江县','从江县','黎平县','大方县'
+    ]
+    SEARCH_TYPECODES = [
+        "风景名胜", "公共厕所", "停车场", "三星级宾馆|四星级宾馆|五星级宾馆|经济型连锁酒店",
+        "公交车站", "咖啡厅|休闲餐饮场所", "充电站"
+    ]
+    # SEARCH_AREA = [
+    #     '榕江县'
+    # ]
+    # SEARCH_TYPECODES = [
+    #     "风景名胜"
+    # ]
 
-# 所有需要查询的关键字
-KEYWORDS = [
-    "风景名胜", "公共厕所", "停车场", "100102|100103|100104|100105",
-    "公交车站", "咖啡厅|休闲餐饮场所", "充电站"
-]
 
-# KEYWORDS = [
-#   "公共厕所"
-# ]
-
-########## 其他设置 ############
-MAX_REQUESTS_PRE_SECOND = os.getenv('MAX_REQUESTS_PRE_SECOND', 5)
-
+class SPIDER_CONFIG(Enum):
+    AMAP_KEYWORD_URL = "https://restapi.amap.com/v5/place/text?"
+    MAX_REQUESTS_PRE_SECONDS = 10
+    MAX_WORK_CLIENTS_PRE_SECONDS = 4
