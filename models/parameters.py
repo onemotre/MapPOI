@@ -1,6 +1,10 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List, Dict, Any, Iterator
+import pandas as pd
+import re
 
+from config import settings
+        
 KEYWORD_URL = "https://restapi.amap.com/v5/place/text?"
 ROUND_URL = "https://restapi.amap.com/v3/place/around?"
 
@@ -29,3 +33,33 @@ class AMapRoundParameters:
     page: Optional[int] = 1
     extensions: Optional[str] = 'all'
     output: Optional[str] = 'json'
+
+class ParamConstructor:
+    def __init__(self, id : int, city : str, 
+                 param : Dict[str, Any] = 
+                     {"keyword": "*",
+                     "city_limit": "true",
+                     "page_size": 25}
+                 ) -> None:
+        self.id = id
+        self.city = city
+        self.base_param = param
+        self.types_idx = 0
+
+    def amap_keyword_params(self) -> Iterator[AMapKeywordParameters]:
+        for page in range(1, 100):
+            yield AMapKeywordParameters(
+                key=settings.AMAP_API_KEY,
+                keywords=self.base_param["keyword"],
+                city=self.city,
+                city_limit=self.base_param["city_limit"],
+                page_size=self.base_param["page_size"],
+                page_num=page
+            )
+
+    def get_path(city : str) -> str:
+        city_path = settings.BASE_FILE_PATH.DATA_MAIN_PATH.value + city + "\\" 
+        return city_path
+    
+    def get_size(self) -> int:
+        return self.types_idx

@@ -5,11 +5,11 @@ import logging
 import datetime
 from tqdm import tqdm
 
-from typing import Any, Dict
+from typing import Any, Dict, Iterator
 from dataclasses import asdict
 
-from ..models.parameters import *
-from ..config import settings
+from models import *
+from config import settings
 
 logging.basicConfig(filename=f"{settings.BASE_FILE_PATH.LOG_PATH.value}ClientError.log", level=logging.ERROR,
                     format='%(asctime)s %(levelname)s %(message)s')
@@ -36,62 +36,69 @@ class AMapApiClient:
         else:
             self.api_key = settings.AMAP_API_KEY
             
-    async def fetch_data(self, session: aiohttp.ClientSession, params) -> pd.DataFrame:
+    async def fetch_data(self, session: aiohttp.ClientSession, 
+                         params : Iterator[AMapKeywordParameters], retries=3) -> list[pd.DataFrame]:
         url = self.BASE_URL
-        params_dict = self._clean_params(asdict(params))
-        params_dict['key'] = self.api_key
-        page = 1
-        fetched_df = pd.DataFrame(
-            columns=["index", "name", "lng", "lat", "province", "city", "area", "location",
-                     "big_category", "mid_category", "sub_category", "rating", "parking_type"])
-        name = params_dict.get('city', None) + "|" + params_dict.get('types', None)
-        while True:
-            try:
-                params_dict['page_num'] = page
-                async with session.get(url, params=params_dict) as response:
-                    if response.status != 200:
-                        raise HTTPError(response.status)
-                    response = await response.json()
-                    if response["status"] == "1":
-                        if response["count"] == "0":
-                            break
-                        page += 1
-                        if self.search_mode == 'keyword':
-                            fetched_df = self.parse_keyword_data(fetched_df, response)
-                        elif self.search_mode == 'round':
-                            fetched_df = self.parse_round_data(fetched_df, response)
+        all_df = []
+        for infotype in settings.KEYWORDS:
+            fetched_df = pd.DataFrame(
+                columns=["index", "name", "lng", "lat", "province", "city", "area", "location",
+                         "big_category", "mid_category", "sub_category", "rating", "parking_type"])
+            for param in params:
+                param.types = infotype
+                params_dict = self._clean_params(asdict(param))
+                try:
+                    async with session.get(url, params=params_dict, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                        if response.status != 200:
+                            raise HTTPError(response.status)
+                        data = await response.json()
+                        if data["status"] == "1":
+                            if data["count"] == "0":
+                                break
+                            if self.search_mode == 'keyword':
+                                fetched_df = self.parse_keyword_data(fetched_df, data)
+                            elif self.search_mode == 'round':
+                                fetched_df = self.parse_round_data(fetched_df, data)
+                            else:
+                                print("don't support this search mode")
+                                return all_df
                         else:
-                            return None
+                            raise AMapApiError(data["infocode"], data["info"])
+                except (HTTPError, aiohttp.ClientConnectorError, aiohttp.ClientOSError) as e:
+                    logging.error(f"| http get error | {e}")
+                    print(f"{e}")
+                    if retries > 0:
+                        print(f"Retrying {retries} times...")
+                        await asyncio.sleep(3)
+                        return await self.fetch_data(session, params, retries - 1)
                     else:
-                        raise AMapApiError(response["infocode"], response["info"])
-            except HTTPError as e:
-                logging.error(f"| http get error | {e}")
-                print(f"{e}")
-                return await None
-            except AMapApiError as e:
-                logging.error(f"| api error | {e}")
-                print(f"{e}")
-                return await None
-        fetched_df.name = name 
-        return fetched_df
-        
+                        return all_df
+                except AMapApiError as e:
+                    logging.error(f"| api error | {e}")
+                    if e.infocode == "10021":
+                    # 高德地图API每秒请求次数超限制
+                        await asyncio.sleep(1)
+                    else:
+                        print(f"{e}")
+            all_df.append(fetched_df)
+        return all_df
             
     def parse_keyword_data(self, df : pd.DataFrame, response : dict):
         for i in range(int(response["count"])):
             poi = response["pois"][i]
             try:
                 new_item = pd.DataFrame({
-                    "index": [df.shape[0]],
-                    "name": poi["name"],
-                    "lng": poi["location"].split(",")[0],
-                    "lat": poi["location"].split(",")[1],
-                    "province": poi["pname"],
-                    "city": poi["cityname"],
-                    "area": poi["adname"],
-                    "location": poi["location"],
-                    "big_category" : poi["type"].split(";")[0],
-                    "mid_category" : poi["type"].split(";")[1],
-                    "sub_category" : poi["type"].split(";")[2],
+                    "index": [str(df.shape[0] + 1)],
+                    "name": [poi["name"]],
+                    "lng": [poi["location"].split(",")[0]],
+                    "lat": [poi["location"].split(",")[1]],
+                    "province": [poi["pname"]],
+                    "city": [poi["cityname"]],
+                    "area": [poi["adname"]],
+                    "location": [poi["location"]],
+                    "big_category" : [poi["type"].split(";")[0]],
+                    "mid_category" : [poi["type"].split(";")[1]],
+                    "sub_category" : [poi["type"].split(";")[2]],
                 })
                 if poi["typecode"] in settings.BASE_CLASS.PARKING_SET.value and "parking_type" in poi["business"]:
                     new_item.loc[0, "parking_type"] = poi["business"]["parking_type"]
@@ -104,8 +111,8 @@ class AMapApiClient:
                 df = pd.concat([df, new_item], ignore_index=True)
 
             except KeyError as e:
+                print("occured KeyError error")
                 logging.error(f"| item {len(df)} was parsed error | {e}")
-        
         return df
     
     def parse_round_data(self, df: pd.DataFrame, response: dict) -> pd.DataFrame:
@@ -113,7 +120,7 @@ class AMapApiClient:
             try:
                 new_item = pd.DataFrame({
                     "index": [df.shape[0]],
-                    "name": [poi["name"]],
+                    "name": poi["name"],
                     "lng": [poi["location"].split(",")[0]],
                     "lat": [poi["location"].split(",")[1]],
                     "province": [poi["pname"]],
